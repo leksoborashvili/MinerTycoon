@@ -13,11 +13,37 @@ public class Dwarf implements Comparable<Dwarf>
     
     private Integer ID;
     private static int objCounter;
+    //pos is the position of each dwarf on the map
     private Pos pos = new Pos();
+    //path keeps track of previously visited tiles. Necessary for the recursion
     private Stack<String> path = new Stack<String>();
+    
     //level defines the abylities of the dwarf
     private int level;
+    
     private int destID=-1;
+    //this is used by collector dwarves
+    /**
+     * destination x coordinate
+     */
+    public int destx;
+    /**
+     * destination y coordinate
+     */
+    public int desty;
+    //this is used to keep track of each level dwarves
+    /**
+     * number of lvl1 dwarves
+     */
+    public static int lvl1=0;
+    /**
+     * number of lvl2 dwarves
+     */
+    public static int lvl2=0;
+    /**
+     * number of lvl3 dwarves
+     */
+    public static int lvl3=0;
     /**
      * initiates new dwarf object. Placing it on the (0,0) tile on the map.
      * giving different access level.
@@ -30,9 +56,9 @@ public class Dwarf implements Comparable<Dwarf>
         level = lvl;
         pos.x=0;
         pos.y=0;
-        if(lvl==1) Map.gold-=5;
-        if(lvl==2) Map.gold-=15;
-        if(lvl==3) Map.gold-=10;
+        if(lvl==1) lvl1++;
+        if(lvl==2) lvl2++;
+        if(lvl==3) lvl3++;
     }
     
     /**
@@ -67,6 +93,7 @@ public class Dwarf implements Comparable<Dwarf>
     {
         return destID;
     }
+    
     /**
      * returns the level of the dwarf
      * @return level of the dwarf
@@ -118,36 +145,38 @@ public class Dwarf implements Comparable<Dwarf>
      * @param direction direction of the dwarf movement
      * @return true if the movement is successful
      */
-    public boolean move(String direction)
+    public void move(String direction)
     {
+      
         if(direction == "left"){
-            if(pos.y==0) return false;
-            pos.y--;
+            if(this.pos.y==0) return ;
+            this.pos.y--;
             path.add("left");
-            return true;
+            return ;
             
         }   else if(direction =="right"){
-            pos.y++;
+            this.pos.y++;
             path.add("right");
-            return true;
+            return ;
         }   else if(direction == "up"){
-            if(pos.x==0) return false;
-            pos.x--;
+            if(this.pos.x==0) return ;
+            this.pos.x--;
             path.add("up");
-            return true;
+            return ;
         }   else if(direction == "down"){
-            pos.x++;
+            this.pos.x++;
             path.add("down");
-            return true;
-        } else if(direction == "return")
+            return ;
+        } else if(direction == "return" && path.size()>0)
             {
                 String dir = path.pop();
-                if(dir=="right") {pos.y--; return true;}
-                if(dir=="left") {pos.y++; return true;}
-                if(dir=="up") {pos.x++; return true;}
-                if(dir=="down") {pos.x--; return true;}
+                if(dir=="right") {this.pos.y--; return ;}
+                if(dir=="left") {this.pos.y++; return ;}
+                if(dir=="up") {this.pos.x++; return ;}
+                if(dir=="down") {this.pos.x--; return ;}
             }
-        return false;
+        
+        
     }
     
     /**
@@ -157,43 +186,80 @@ public class Dwarf implements Comparable<Dwarf>
      */
     public String whereToGo(Map m)
     {
-        ArrayList<String> directions = new ArrayList<>();
+        PriorityQueue<Direction> directions = new PriorityQueue<>();
         
         if(pos.y<m.length-1 && m.get(pos.x,pos.y+1).type!="obstacle") 
         {   
+            Direction dir1 = new Direction();
+            dir1.numberofDwarves=m.get(pos.x,pos.y+1).bst.size();
+            dir1.dir="right";
             if(m.get(pos.x,pos.y+1).type.equals("pit"))
             {
-                if(this.level==3) directions.add("right");
-            } else directions.add("right");
+                if(this.level==3) directions.add(dir1);
+            } else directions.add(dir1);
         }
         if(pos.x<m.length-1 && m.get(pos.x+1,pos.y).type!="obstacle") 
         {
+            Direction dir2 = new Direction();
+            dir2.numberofDwarves=m.get(pos.x+1,pos.y).bst.size();
+            dir2.dir="down";
             if(m.get(pos.x+1,pos.y).type.equals("pit"))
             {
-                if(this.level==3) directions.add("down");
-            } else directions.add("down");
+                if(this.level==3) directions.add(dir2);
+            } else directions.add(dir2);
             
         }
         
         if(pos.y>0 && m.get(pos.x,pos.y-1).type!="obstacle") 
         {
+            Direction dir3 = new Direction();
+            dir3.numberofDwarves=m.get(pos.x,pos.y-1).bst.size();
+            dir3.dir="left";
             if(m.get(pos.x,pos.y-1).type.equals("pit"))
             {
-                if(this.level==3) directions.add("left");
-            } else directions.add("left");
+                if(this.level==3) directions.add(dir3);
+            } else directions.add(dir3);
             
         }
         
         if(pos.x>0 && m.get(pos.x-1,pos.y).type!="obstacle") 
         {
+            Direction dir4 = new Direction();
+            dir4.numberofDwarves=m.get(pos.x-1,pos.y).bst.size();
+            dir4.dir="up";
             if(m.get(pos.x-1,pos.y).type.equals("pit"))
             {
-                if(this.level==3) directions.add("up");
-            } else directions.add("up");
+                if(this.level==3) directions.add(dir4);
+            } else directions.add(dir4);
             
         }
         
-        
+        for(int i=0;i<directions.size();i++)
+        {
+            Direction direction = directions.poll();
+            String dir = direction.dir;
+            if(dir=="right")
+                {
+                    Tile t = m.get(pos.x,pos.y+1);
+                    if(t.bst.get(ID)==null) return "right"; 
+                }
+            if(dir=="down")
+                {
+                    Tile t = m.get(pos.x+1,pos.y);
+                    if(t.bst.get(ID)==null) return "down"; 
+                }
+            if(dir=="left")
+                {
+                    Tile t = m.get(pos.x,pos.y-1);
+                    if(t.bst.get(ID)==null) return "left"; 
+                }
+            if(dir=="up")
+                {
+                    Tile t = m.get(pos.x-1,pos.y);
+                    if(t.bst.get(ID)==null) return "up"; 
+                }
+        }
+        /*
         //the case where the dwarf will try to go unmined position
         for(int i=0;i<directions.size();i++)
         {
@@ -243,7 +309,7 @@ public class Dwarf implements Comparable<Dwarf>
                     if(t.bst.get(ID)==null) return "up"; 
                 }
         }
-        
+        */
         //if the miner has been in all the directions he will just go back 
         if(path.size()==0) return "stay";
         
@@ -299,6 +365,17 @@ public class Dwarf implements Comparable<Dwarf>
     {
         objCounter++;
         ID=objCounter;
+    }
+    /**
+     * resets all the static values
+     * 
+     */
+    public static void nullify()
+    {
+        lvl1=0;
+        lvl2=0;
+        lvl3=0;
+        objCounter=0;
     }
     /**
      * comparable that compares dwarves with their ID
